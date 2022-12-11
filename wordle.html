@@ -12,6 +12,7 @@ var invalid = "";
 
 var word = "";
 var lexicon = [];
+var lex_avail = [];
 
 function loadLexicon(){
   let text = document.getElementById("lexicon"+lex_id).innerHTML;
@@ -34,13 +35,15 @@ function start(){
     lex_id = lid;
     lexicon = [];
   }
-
   if (lexicon.length == 0) loadLexicon();
+  lex_avail = [];
+  for(let i=0; i<lexicon.length; i++) lex_avail.push(lexicon[i]);
+
   guesses = [];
   win = false;
   word = lexicon[Math.floor(Math.random()*lexicon.length)];
  // console.log(word);
-  console.log("Lexicon Size = "+lexicon.length);
+  console.log("Lexicon Size = "+lexicon.length+","+lex_avail.length);
   draw();
 }
 
@@ -97,6 +100,12 @@ function draw(){
   }
 }
 
+function showHint(){
+  let s = "";
+  for(let i=0; i<lex_avail.length; i++) s += lex_avail[i]+", ";
+  document.getElementById("message").innerHTML = "Available Words: "+s;  
+}
+
 function guess(){
   let row = guesses.length;
   let word = "";
@@ -109,12 +118,56 @@ function guess(){
   if (we){
     invalid = "";
     guesses.push(word);
+    if (document.getElementById("adversary_input").checked && lex_avail.length < 3000) adversaryAdapt(word);
+    updateAvailable(word);
     checkWin();
   }
   else{
     invalid = word;
   }
   draw();
+}
+
+function adversaryAdapt(guess){
+  let ca_max = 0;
+  let ca_all = [];
+  for(let i=0; i<lex_avail.length; i++){
+    let ca = 0;
+    for(let j=0; j<lex_avail.length; j++){
+      if (wordAllowed(lex_avail[i],guess,lex_avail[j])) ca ++;
+    }
+    if (ca > ca_max || (ca == ca_max && lex_avail[i] != guess)) ca_max = ca;
+    ca_all.push(ca);
+  }
+  let opts = [];
+  for(let i=0; i<lex_avail.length; i++){
+    if (ca_all[i] == ca_max && lex_avail[i] != guess) opts.push(lex_avail[i]);
+  }
+  if (opts.length > 0) word = opts[Math.floor(Math.random()*opts.length)];
+  //else word = guess;
+  console.log("Adapted Word = "+word);
+}
+
+function updateAvailable(guess){
+  let la2 = [];
+  for(let i=0; i<lex_avail.length; i++){
+    if (wordAllowed(word,guess,lex_avail[i])) la2.push(lex_avail[i]);
+  }
+  lex_avail = la2;
+  console.log("Avail "+lex_avail.length);
+  for(let i=0; i<lex_avail.length; i++) console.log(lex_avail[i]);
+}
+
+function wordAllowed(real,guess,test){
+  for(let j=0; j<real.length; j++){
+    let r = real.charAt(j);
+    let g = guess.charAt(j);
+    let t = test.charAt(j);
+    if (g == r && t != r) return false;
+    if (g != r && real.includes(g) && (!test.includes(g) || t == g)) return false;
+    if (g != r && !real.includes(g) && test.includes(g)) return false;
+  }
+  return true;
 }
 
 function checkWordExists(wd){
@@ -166,10 +219,13 @@ function checkWin(){
 <br><hr><br>
 <div>
 <button type="button" onclick="start()">New Puzzle</button>
+<button type="button" onclick="showHint()">Hint</button>
+
 </div>
 
+
+<div hidden>
 <br>
-<div>
 <label for="lexicon_selector">Lexicon:</label>
 <select id="lexicon_selector">
     <option value="0">Original</option>
@@ -177,11 +233,20 @@ function checkWin(){
   </select>
 </div>
 
+
+<div hidden>
 <br>
-<div>
 <label for="wordlen_input">Word Length:</label>
 <input type="text" id="wordlen_input" size="2" maxlength="2" value="5"></input>
 </div>
+
+<br>
+<div>
+<label for="adversary_input">Adversarial? </label>
+<input type="checkbox" id="adversary_input"></input>
+</div>
+
+
 
 <p hidden id="lexicon0">
 aardvark
